@@ -1,6 +1,6 @@
 Originally made in 2022
 
-### Note: This plugin isn't being actively maintained. For a more up-to-date version, see https://devforum.roblox.com/t/2961561
+### Note: This plugin isn't actively being updated. For an alternative, see https://devforum.roblox.com/t/2961561
 
 #
 
