@@ -1,5 +1,5 @@
-# Note: This plugin isn't being actively maintained. For a more up-to-date version, see: 
-https://devforum.roblox.com/t/2961561
+Originally made in 2022
+### Note: This plugin isn't being actively maintained. For a more up-to-date version, see https://devforum.roblox.com/t/2961561
 
 **Roblox Marketplace:** https://create.roblox.com/store/asset/10801502587
 
@@ -19,7 +19,7 @@ From there you can press `Ctrl + Shift + B` inside of Visual Studio Code and the
 
 # Credits
 
-Plugin written by Rawblocky
-Figma plugin partially by me, but with some code from online tutorials (I don't program in TS!)
+Roblox plugin written by Rawblocky
+Figma plugin partially by Rawblocky, but with some code from online tutorials (I don't program in TS!)
 
 Used [MaximumADHD's Roblox-Plugins](https://github.com/MaximumADHD/Roblox-Plugins)'s repository as a reference for how this repository is structured and the file needed to build this plugin
