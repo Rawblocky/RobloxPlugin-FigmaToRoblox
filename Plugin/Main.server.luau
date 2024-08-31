@@ -16,6 +16,7 @@ local button = toolbar:CreateButton(
 	"rbxassetid://10801433932",
 	"Figma to Roblox"
 )
+button.ClickableWhenViewportHidden = true
 
 local OldState
 
@@ -27,7 +28,7 @@ local function CheckActive()
 		OldState = nil
 	end
 	if PluginGui.Enabled then
-		OldState = Handler(PluginGui)
+		OldState = Handler(PluginGui, plugin)
 	end
 end
 

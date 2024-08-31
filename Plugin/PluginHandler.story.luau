@@ -1,6 +1,7 @@
 --// Created by Rawblocky
 
 local Players = game:GetService("Players")
+local ScriptEditorService = game:GetService("ScriptEditorService")
 local StarterGui = game:GetService("StarterGui")
 
 local HttpService = game:GetService("HttpService")
@@ -8,8 +9,36 @@ local HttpService = game:GetService("HttpService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
 local LocalPlayer = Players.LocalPlayer
+local plugin = plugin
 
-return function(ParentInto)
+local insertJSONScript = Instance.new("ModuleScript")
+insertJSONScript.Archivable = false
+insertJSONScript.Name = "Insert JSON Code"
+
+local currentSource
+
+local function openJSONScript()
+	ScriptEditorService:UpdateSourceAsync(insertJSONScript, function()
+		currentSource = "-- Paste in the exported JSON code here, then press [ENTER]\n"
+		return currentSource
+	end)
+	plugin:OpenScript(insertJSONScript, 2)
+end
+
+local function getJSONSource()
+	if not currentSource then
+		return
+	end
+	-- Don't include the 1st line, if it's a comment
+	local lines = string.split(currentSource, "\n")
+	if lines[1]:find("^%s*%-%-") then
+		table.remove(lines, 1)
+	end
+	return table.concat(lines, "\n")
+end
+
+return function(ParentInto, pluginArgument)
+	plugin = pluginArgument or plugin
 	local IsHoarcekat = not LocalPlayer
 		and ParentInto:FindFirstAncestorWhichIsA("PluginGui")
 		and ParentInto:FindFirstAncestorWhichIsA("PluginGui").Name == "Hoarcekat"
@@ -35,29 +64,60 @@ return function(ParentInto)
 		return Event
 	end
 	local UI = AddEvent(script.Parent:WaitForChild("Container"):Clone())
+	insertJSONScript.Parent = UI
 	local TextBox = UI.InsertCode.TextBox.TextBox
 	local GenerateButton = UI.Generate.TextButton
 	local CanGenerate = false
 	local Busy = false
-	if IsHoarcekat then
-		TextBox.Text =
-			'[{"type":"FRAME","name":"Frame 2","visible":true,"width":476,"height":271,"x":-145,"y":-135,"rotation":0,"clipsContent":true,"fills":[{"type":"SOLID","visible":true,"opacity":1,"blendMode":"NORMAL","color":{"r":1,"g":1,"b":1}}],"cornerRadius":25,"children":[{"type":"RECTANGLE","name":"Rectangle 1","visible":true,"width":245,"height":117,"x":-32,"y":13,"rotation":0,"fills":[{"type":"SOLID","visible":true,"opacity":1,"blendMode":"NORMAL","color":{"r":0.8509804010391235,"g":0.8509804010391235,"b":0.8509804010391235}}],"cornerRadius":0,"children":[]},{"type":"RECTANGLE","name":"Rectangle 2","visible":true,"width":245,"height":117,"x":320,"y":136,"rotation":0,"fills":[{"type":"SOLID","visible":true,"opacity":1,"blendMode":"NORMAL","color":{"r":0.8509804010391235,"g":0.8509804010391235,"b":0.8509804010391235}}],"cornerRadius":10000,"children":[]},{"type":"TEXT","name":"hello","visible":true,"width":169,"height":45,"x":98,"y":171,"rotation":0,"fills":[{"type":"SOLID","visible":true,"opacity":1,"blendMode":"NORMAL","color":{"r":0,"g":0,"b":0}}],"children":[],"textAlignHorizontal":"LEFT","textAlignVertical":"TOP","textAutoResize":"NONE","characters":"hello","fontSize":12}]}]'
-	end
 	UI.Parent = ParentInto
 	local function Update()
+		if not getJSONSource() then
+			return
+		end
 		local Success, _ = pcall(function()
-			local Table = HttpService:JSONDecode(TextBox.Text)
+			local Table = HttpService:JSONDecode(getJSONSource())
 			if not Table[1] then
 				return error("No contents")
 			end
 		end)
-		local Enabled = not (not Success or TextBox.Text == "[]")
+		local Enabled = not (not Success or getJSONSource() == "[]")
 		GenerateButton.AutoButtonColor = Enabled
 		GenerateButton.DisabledGradient.Enabled = not Enabled
 		CanGenerate = Enabled
+		TextBox.Text = string.sub(getJSONSource(), 1, 100)
+		return Enabled
 	end
+	AddEvent(ScriptEditorService.TextDocumentDidChange:Connect(function(document: ScriptDocument, changes: table)
+		local changedScript = document:GetScript()
+		if changedScript ~= insertJSONScript then
+			return
+		end
+		local newText = document:GetText(2, 1)
+		currentSource = newText
+		if string.split(newText, "\n")[2] ~= nil then
+			local isEnabled = Update()
+			if isEnabled then
+				document:CloseAsync()
+			else
+				ScriptEditorService:UpdateSourceAsync(changedScript, function(source: string)
+					-- Replace the first line
+					local lines = string.split(source, "\n")
+					lines[1] = "-- ⚠️ Invalid format! Paste in the exported JSON code here, then press [ENTER]"
+					currentSource = lines[1] .. "\n" .. (lines[2] or "")
+					return currentSource
+				end)
+				local lineText = document:GetLine(2)
+				document:ForceSetSelectionAsync(2, 1, 2, #lineText + 1)
+			end
+			return
+		end
+		Update()
+	end))
 	AddEvent(TextBox:GetPropertyChangedSignal("Text"):Connect(Update))
+	AddEvent(TextBox.Focused:Connect(openJSONScript))
+	TextBox.PlaceholderText = "Open script to paste JSON code"
 	Update()
+
 	local Types = {
 		["FRAME"] = "Frame",
 		["TEXT"] = "TextLabel",
@@ -208,9 +268,9 @@ return function(ParentInto)
 			end
 		end,
 		["strokeWeight"] = function(Object, Information)
-			local strokeWeight = math.round(Information.strokeWeight)
+			local strokeWeight = math.round(Information.strokeWeight or 0) or 0
 			local strokes = Information.strokes
-			if strokeWeight <= 0 or not strokes[1] then
+			if strokeWeight <= 0 or not strokes or not strokes[1] then
 				return
 			end
 			local UIStroke = Instance.new("UIStroke")
@@ -272,7 +332,7 @@ return function(ParentInto)
 		TextNodes = {}
 		GenerateButton.Text = "..."
 		local Success, Error = pcall(function()
-			local Table = HttpService:JSONDecode(TextBox.Text)
+			local Table = HttpService:JSONDecode(getJSONSource())
 			local AllGenerated = {}
 			for _, Information in ipairs(Table) do
 				table.insert(AllGenerated, Generate(Information, nil))
